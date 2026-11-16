@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f3ef">
-<title>Báo cáo hoạt động ngày · Phòng Kinh Doanh 2</title>
+<title>Báo cáo hoạt động ngày · Phòng Kinh Doanh</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -127,6 +127,7 @@ html[data-theme="dark"] .av{background:hsl(var(--h) 30% 24%);color:hsl(var(--h) 
 .av.lg{width:52px;height:52px;font-size:17px}
 .mini-bar{width:44px;height:4px;border-radius:4px;background:var(--line);overflow:hidden;display:inline-block;vertical-align:middle;margin-left:4px}
 .mini-bar i{display:block;height:100%;background:var(--ok)}
+.team-tag{display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:600;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);margin-left:4px;vertical-align:middle;line-height:1.2}
 
 /* ---------- KPI ---------- */
 .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
@@ -168,7 +169,7 @@ html[data-theme="dark"] .av{background:hsl(var(--h) 30% 24%);color:hsl(var(--h) 
 .heat th{font-weight:500;font-size:11px;color:var(--muted);text-align:center;padding:0 0 2px;white-space:nowrap}
 .heat th.sel{color:var(--text);font-weight:700}
 .heat th .dw{display:block;font-size:10px;color:var(--faint)}
-.heat td.nm{position:sticky;left:0;z-index:2;background:var(--surface);padding-right:8px;white-space:nowrap;font-size:13px;min-width:145px;max-width:185px;overflow:hidden;text-overflow:ellipsis}
+.heat td.nm{position:sticky;left:0;z-index:2;background:var(--surface);padding-right:8px;white-space:nowrap;font-size:13px;min-width:145px;max-width:195px;overflow:hidden;text-overflow:ellipsis}
 .heat td.nm button{border:0;background:none;padding:0;display:flex;align-items:center;gap:8px;text-align:left;width:100%}
 .heat td.nm .av{width:22px;height:22px;font-size:9.5px}
 .hc{width:36px;min-width:36px;height:30px;border-radius:7px;font-size:12px;font-weight:600;text-align:center;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s var(--ease-out)}
@@ -324,7 +325,7 @@ table.data{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
   #tabs button{flex:1}
   #modeSeg{order:1}
   .controls .spacer{order:2}
-  #scopeSeg{order:3}
+  #scopeSeg{order:3;overflow-x:auto;max-width:100%}
   .datebar{order:4;width:100%}
   .day-ctl{width:100%}
   .date-pill{flex:1;justify-content:center}
@@ -356,10 +357,10 @@ table.data{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
 <header class="topbar">
   <div class="wrap topbar-in">
     <div class="brand">
-      <div class="brand-mark" id="brandMark">PKD2</div>
+      <div class="brand-mark" id="brandMark">PKD</div>
       <div style="min-width:0">
         <h1 id="teamName">Phòng Kinh Doanh</h1>
-        <p>Báo cáo hoạt động hằng ngày của TVBH</p>
+        <p id="teamSub">Báo cáo hoạt động hằng ngày của TVBH</p>
       </div>
     </div>
     <div class="top-actions">
@@ -407,9 +408,8 @@ table.data{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
       </div>
     </div>
     <div class="spacer"></div>
-    <div class="seg seg-sm" id="scopeSeg" aria-label="Phạm vi">
-      <button data-scope="team" id="scopeTeamBtn">Nhóm</button>
-      <button data-scope="all">Toàn bộ</button>
+    <div class="seg seg-sm" id="scopeSeg" aria-label="Phạm vi phòng ban">
+      <!-- Dynamic team buttons populated in JS -->
     </div>
   </div>
 </header>
@@ -659,7 +659,7 @@ function relDay(s){
 const saved = JSON.parse(localStorage.getItem('pkd-dash') || '{}');
 const S = {
   tab: saved.tab || 'team',
-  scope: saved.scope || 'team',
+  scope: saved.scope || 'all',         // 'all' | 'pkd1' | 'pkd2' | 'pkd3'
   mode: saved.mode || 'day',
   dupMode: saved.dupMode || 'latest',
   person: saved.person || null,
@@ -671,6 +671,9 @@ const S = {
   openDay: null
 };
 
+// Migrate old scope value
+if (S.scope === 'team') S.scope = 'all';
+
 function persist(){
   localStorage.setItem('pkd-dash', JSON.stringify({
     tab:S.tab, scope:S.scope, mode:S.mode, dupMode:S.dupMode,
@@ -681,17 +684,30 @@ function persist(){
 if (saved.theme) document.documentElement.dataset.theme = saved.theme;
 else if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark';
 
-// Cho phép mở nhanh qua link: dashboard.html?tab=person&person=PT13&cat=budget
+// Cho phép mở nhanh qua link: dashboard.html?tab=person&person=PT13&team=pkd2
 { const q = new URLSearchParams(location.search);
   if (q.get('tab')) S.tab = q.get('tab');
   if (q.get('person')) S.person = q.get('person').toUpperCase();
-  if (q.get('scope')) S.scope = q.get('scope');
+  if (q.get('team')) S.scope = q.get('team').toLowerCase();
+  else if (q.get('scope')) S.scope = q.get('scope').toLowerCase();
   if (q.get('mode')) S.mode = q.get('mode');
   if (q.get('heat')) S.heatMode = q.get('heat');
   if (q.get('cat')) S.catFilter = q.get('cat');
   if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme'); }
 
-const D = { raw:[], team:[], teamName:'', all:[], byCode:new Map(), recs:[], fixedCount:0, source:'', loadedAt:null, minDate:null, maxDate:null };
+const D = {
+  raw:[],
+  teams:[],       // [{ id:'pkd1', name:'PHÒNG KINH DOANH 1', shortName:'PKD 1', mark:'PKD1', members:[] }, ...]
+  teamMap: new Map(), // code -> team
+  all:[],
+  byCode:new Map(),
+  recs:[],
+  fixedCount:0,
+  source:'',
+  loadedAt:null,
+  minDate:null,
+  maxDate:null
+};
 
 /* ---------------- loading ---------------- */
 function parseCSV(text){
@@ -815,14 +831,49 @@ const num = v => {
 };
 
 function build(dataRows, keyRows){
-  // KEY
-  D.team = []; D.teamName = '';
-  for (const r of keyRows){
-    const v = String(r[0] || '').trim(); if (!v) continue;
-    if (/^[A-Za-z]{1,6}\s*\d+\s*[|\-–:]/.test(v)){ const p = parseWho(v); if (!D.team.some(t => t.code === p.code)) D.team.push(p); }
-    else if (!D.teamName) D.teamName = v;
+  // 1. Parse KEY sheet (Phòng Kinh Doanh 1, 2, 3...)
+  D.teams = [];
+  D.teamMap = new Map();
+  const firstKeyRow = keyRows[0] || [];
+  const numCols = firstKeyRow.length;
+
+  const detectedTeams = [];
+  for (let c = 0; c < numCols; c++){
+    const title = String(firstKeyRow[c] || '').trim();
+    if (title){
+      const mNum = title.match(/(\d+)/);
+      const numStr = mNum ? mNum[1] : String(c + 1);
+      const id = 'pkd' + numStr;
+      const shortName = 'PKD ' + numStr;
+      const mark = 'PKD' + numStr;
+      detectedTeams.push({ c, id, num: +numStr, name: title, shortName, mark, members: [] });
+    }
   }
-  // Data
+
+  // Populate team members from rows below
+  for (const t of detectedTeams){
+    for (let r = 1; r < keyRows.length; r++){
+      const row = keyRows[r] || [];
+      const val = String(row[t.c] || '').trim();
+      if (val && /^[A-Za-z]{1,6}\s*\d+\s*[|\-–:]/.test(val)){
+        const p = parseWho(val);
+        p.teamId = t.id;
+        p.teamName = t.name;
+        p.teamShort = t.shortName;
+        p.inTeam = true;
+        if (!t.members.some(m => m.code === p.code)){
+          t.members.push(p);
+          D.teamMap.set(p.code, t);
+        }
+      }
+    }
+  }
+
+  // Sort teams logically: PKD 1, PKD 2, PKD 3
+  detectedTeams.sort((a, b) => a.num - b.num);
+  D.teams = detectedTeams;
+
+  // 2. Parse Data sheet
   const head = (dataRows[0] || []).map(norm);
   const col = (name, fb) => { const i = head.indexOf(norm(name)); return i >= 0 ? i : fb; };
   const iTs = col('Dấu thời gian', 0), iWho = col('TVBH (Mã | Họ tên)', 1), iDate = col('Ngày ghi nhận', 2);
@@ -842,18 +893,45 @@ function build(dataRows, keyRows){
     const link = String(r[iLink] ?? '').trim();
     const budgetRaw = iBudget >= 0 ? r[iBudget] : '';
     const budget = num(budgetRaw);
+
+    const mTeam = D.teamMap.get(who.code);
+    who.teamId = mTeam ? mTeam.id : 'other';
+    who.teamName = mTeam ? mTeam.name : 'Khác';
+    who.teamShort = mTeam ? mTeam.shortName : '';
+
     D.raw.push({...who, ts, date: fd.d, dateFixed: fd.fixed, rawDate: String(r[iDate]||''), vals, budget,
       link: link && link !== '0' ? link : '', note: ''});
   }
   D.raw.sort((a, b) => a.ts - b.ts);
   D.fixedCount = D.raw.filter(r => r.dateFixed).length;
 
-  // all members
-  const map = new Map();
-  D.team.forEach(t => map.set(t.code, {...t, inTeam:true}));
-  for (const r of D.raw) if (!map.has(r.code)) map.set(r.code, {code:r.code, name:r.name, inTeam:false});
-  D.all = [...map.values()].sort((a, b) => (b.inTeam - a.inTeam) || (a.inTeam ? 0 : a.code.localeCompare(b.code, 'vi', {numeric:true})));
-  if (!D.team.length) S.scope = 'all';
+  // Build all members list
+  const memberMap = new Map();
+  // Add all members from KEY teams first
+  for (const t of D.teams){
+    for (const m of t.members){
+      memberMap.set(m.code, m);
+    }
+  }
+  // Add any extra members from Data if not already in KEY
+  for (const r of D.raw){
+    if (!memberMap.has(r.code)){
+      memberMap.set(r.code, {
+        code: r.code, name: r.name,
+        teamId: 'other', teamName: 'Khác', teamShort: '',
+        inTeam: false
+      });
+    }
+  }
+
+  D.all = [...memberMap.values()].sort((a, b) => {
+    // Sort by team order first, then by code
+    const tA = D.teams.find(t => t.id === a.teamId)?.num || 999;
+    const tB = D.teams.find(t => t.id === b.teamId)?.num || 999;
+    if (tA !== tB) return tA - tB;
+    return a.code.localeCompare(b.code, 'vi', { numeric: true });
+  });
+
   aggregate();
 }
 
@@ -861,7 +939,7 @@ function aggregate(){
   const map = new Map();
   for (const r of D.raw){
     const k = r.code + '|' + r.date;
-    if (!map.has(k)) map.set(k, {code:r.code, name:r.name, date:r.date, subs:[]});
+    if (!map.has(k)) map.set(k, {code:r.code, name:r.name, date:r.date, subs:[], teamId:r.teamId, teamName:r.teamName, teamShort:r.teamShort});
     map.get(k).subs.push(r);
   }
   D.byCode = new Map(); D.recs = [];
@@ -874,10 +952,14 @@ function aggregate(){
     const budget = last.budget;
     const g = {online:0, care:0, field:0};
     METRICS.forEach((m, i) => g[m.g] += vals[i]);
-    const rec = {code:e.code, name:e.name, date:e.date, vals, g, total: g.online + g.care + g.field, budget,
+    const rec = {
+      code: e.code, name: e.name, date: e.date, vals, g,
+      total: g.online + g.care + g.field, budget,
+      teamId: e.teamId, teamName: e.teamName, teamShort: e.teamShort,
       subs: e.subs, ts: last.ts, dateFixed: e.subs.some(x => x.dateFixed),
       links: [...new Set(e.subs.map(x => x.link).filter(Boolean))],
-      notes: []};
+      notes: []
+    };
     D.recs.push(rec);
     if (!D.byCode.has(e.code)) D.byCode.set(e.code, new Map());
     D.byCode.get(e.code).set(e.date, rec);
@@ -886,7 +968,16 @@ function aggregate(){
   D.minDate = ds[0] || todayIso(); D.maxDate = ds[ds.length-1] || todayIso();
 }
 
-const members = () => (S.scope === 'team' && D.team.length) ? D.team.map(t => D.all.find(a => a.code === t.code) || t) : D.all;
+const currentTeam = () => {
+  if (S.scope === 'all' || !D.teams.length) return null;
+  return D.teams.find(t => t.id === S.scope) || null;
+};
+
+const members = () => {
+  const t = currentTeam();
+  return t ? t.members : D.all;
+};
+
 const recOf = (code, day) => D.byCode.get(code)?.get(day) || null;
 
 // Lấy ngân sách quảng cáo hiện tại (mới nhất trong tháng/kỳ) của thành viên
@@ -958,12 +1049,29 @@ function periodLabel(){
   if (S.mode === 'day') return `${relDay(S.date)}, ${dmy(S.date)}`;
   return `${dm(S.from)} → ${dm(S.to)} (${period().length} ngày)`;
 }
+
 function renderControls(){
   $$('#tabs button').forEach(b => { const on = b.dataset.tab === S.tab; b.setAttribute('aria-pressed', on); b.setAttribute('aria-selected', on); });
   $$('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === S.mode));
-  $$('#scopeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.scope === S.scope));
-  $('#scopeTeamBtn').textContent = `Nhóm (${D.team.length})`;
-  $('#scopeTeamBtn').hidden = !D.team.length;
+
+  // Render Dynamic Scope Seg Buttons (Tất cả, PKD 1, PKD 2, PKD 3...)
+  const teamButtons = [
+    `<button data-scope="all"${S.scope === 'all' ? ' aria-pressed="true"' : ''}>Tất cả (${D.all.length})</button>`,
+    ...D.teams.map(t => `<button data-scope="${t.id}"${S.scope === t.id ? ' aria-pressed="true"' : ''}>${esc(t.shortName)} (${t.members.length})</button>`)
+  ].join('');
+  $('#scopeSeg').innerHTML = teamButtons;
+
+  const t = currentTeam();
+  if (t){
+    $('#teamName').textContent = t.name;
+    $('#brandMark').textContent = t.mark;
+    $('#teamSub').textContent = `${t.members.length} thành viên · Báo cáo hoạt động hằng ngày`;
+  } else {
+    $('#teamName').textContent = 'Toàn bộ Phòng Kinh Doanh';
+    $('#brandMark').textContent = 'ALL';
+    $('#teamSub').textContent = `${D.all.length} thành viên (${D.teams.length} phòng kinh doanh) · Báo cáo hoạt động hằng ngày`;
+  }
+
   $('#dayCtl').hidden = S.mode !== 'day';
   $('#rangeCtl').hidden = S.mode !== 'range';
   const lbl = isMobile() ? `${DOW[dowOf(S.date)]}, ${dm(S.date)}` : `${relDay(S.date)}, ${dmy(S.date)}`;
@@ -974,9 +1082,7 @@ function renderControls(){
   $('#preset').value = S.preset;
   $('#fromInput').value = S.from; $('#toInput').value = S.to;
   $('#dupMode').value = S.dupMode;
-  const name = D.teamName || 'Phòng Kinh Doanh 2';
-  $('#teamName').textContent = S.scope === 'team' ? name : 'Toàn bộ TVBH';
-  const mk = name.match(/(\d+)\s*$/); $('#brandMark').textContent = S.scope === 'team' ? ('PKD' + (mk ? mk[1] : '2')) : 'ALL';
+
   $('#footInfo').innerHTML = `${D.raw.length} lượt nộp · ${D.recs.length} báo cáo ngày` +
     (D.fixedCount ? ` · <span title="Ngày ghi nhận bị nhập sai định dạng hoặc năm; đã tự suy ra từ thời điểm nộp">${D.fixedCount} lượt đã tự hiệu chỉnh ngày</span>` : '') +
     ` · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Google Sheet</a>`;
@@ -1015,8 +1121,9 @@ function renderTeam(){
     $('#rcBar').style.width = (n ? done.length / n * 100 : 0) + '%';
     const chip = (m, ok) => {
       const r = recOf(m.code, S.date);
-      return `<button class="person ${ok ? '' : 'miss'}" data-person="${esc(m.code)}" title="${esc(m.code + ' · ' + m.name)}">
-        ${avatar(m)}<span><span class="nm">${esc(shortName(m.name))}</span><br>
+      const tag = S.scope === 'all' && m.teamShort ? `<span class="team-tag">${esc(m.teamShort)}</span>` : '';
+      return `<button class="person ${ok ? '' : 'miss'}" data-person="${esc(m.code)}" title="${esc(m.code + ' · ' + m.name + (m.teamShort ? ' (' + m.teamShort + ')' : ''))}">
+        ${avatar(m)}<span><span class="nm">${esc(shortName(m.name))}${tag}</span><br>
         <span class="meta">${ok ? `<span class="val">${fmt(r.total)}</span> HĐ${r.budget ? ' · ' + fmtVND(r.budget, true) : ''} · ${r.ts.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}${r.subs.length > 1 ? ' · ' + r.subs.length + ' lần' : ''}` : 'Chưa báo cáo'}</span></span></button>`;
     };
     $('#rcGroups').innerHTML =
@@ -1031,9 +1138,12 @@ function renderTeam(){
     $('#rcBar').style.width = rate*100 + '%';
     const list = ms.map(m => ({m, a: A.by.get(m.code)})).sort((x, y) => x.a.days - y.a.days || x.a.total - y.a.total);
     const low = list.filter(x => x.a.days / nd < 0.6), ok = list.filter(x => x.a.days / nd >= 0.6).reverse();
-    const chip = x => `<button class="person ${x.a.days / nd < 0.6 ? 'miss' : ''}" data-person="${esc(x.m.code)}" title="${esc(x.m.code + ' · ' + x.m.name)}">
-      ${avatar(x.m)}<span><span class="nm">${esc(shortName(x.m.name))}</span><br>
-      <span class="meta">${x.a.days}/${nd} ngày <span class="mini-bar"><i style="width:${x.a.days/nd*100}%"></i></span> · ${fmt(x.a.total)} HĐ${x.a.latestBudget ? ' · ' + fmtVND(x.a.latestBudget, true) : ''}</span></span></button>`;
+    const chip = x => {
+      const tag = S.scope === 'all' && x.m.teamShort ? `<span class="team-tag">${esc(x.m.teamShort)}</span>` : '';
+      return `<button class="person ${x.a.days / nd < 0.6 ? 'miss' : ''}" data-person="${esc(x.m.code)}" title="${esc(x.m.code + ' · ' + x.m.name + (x.m.teamShort ? ' (' + x.m.teamShort + ')' : ''))}">
+        ${avatar(x.m)}<span><span class="nm">${esc(shortName(x.m.name))}${tag}</span><br>
+        <span class="meta">${x.a.days}/${nd} ngày <span class="mini-bar"><i style="width:${x.a.days/nd*100}%"></i></span> · ${fmt(x.a.total)} HĐ${x.a.latestBudget ? ' · ' + fmtVND(x.a.latestBudget, true) : ''}</span></span></button>`;
+    };
     $('#rcGroups').innerHTML =
       (low.length ? `<div><div class="rc-label">Báo cáo dưới 60% số ngày <b>${low.length}</b></div><div class="people">${low.map(chip).join('')}</div></div>` : '') +
       (ok.length ? `<div><div class="rc-label">Đều đặn <b>${ok.length}</b></div><div class="people">${ok.map(chip).join('')}</div></div>` : '');
@@ -1164,7 +1274,8 @@ function renderHeat(ms, days){
 
   const cell = (r, m, d) => {
     const sel = S.mode === 'day' && d === S.date ? ' sel' : '';
-    const t = `${m.name} · ${DOW[dowOf(d)]} ${dm(d)}`;
+    const teamTxt = m.teamShort ? ` (${m.teamShort})` : '';
+    const t = `${m.name}${teamTxt} · ${DOW[dowOf(d)]} ${dm(d)}`;
     if (S.heatMode === 'check'){
       if (!r) return `<button class="hc chk-no${sel}" data-cell="${esc(m.code)}|${d}" title="${esc(t)}: Chưa báo cáo" aria-label="${esc(t)}: Chưa báo cáo">—</button>`;
       if (!r.total) return `<button class="hc chk-zero${sel}" data-cell="${esc(m.code)}|${d}" title="${esc(t)}: Có báo cáo 0 hoạt động">0</button>`;
@@ -1195,8 +1306,9 @@ function renderHeat(ms, days){
       ${ms.map(m => {
         const n = days.filter(d => recOf(m.code, d)).length;
         const pct = days.length ? Math.round(n / days.length * 100) : 0;
+        const tag = S.scope === 'all' && m.teamShort ? `<small class="team-tag">${esc(m.teamShort)}</small>` : '';
         return `<tr>
-          <td class="nm"><button data-person="${esc(m.code)}" title="${esc(m.code + ' · ' + m.name)}">${avatar(m)}<span>${esc(shortName(m.name))}</span></button></td>
+          <td class="nm"><button data-person="${esc(m.code)}" title="${esc(m.code + ' · ' + m.name + (m.teamShort ? ' (' + m.teamShort + ')' : ''))}">${avatar(m)}<span>${esc(shortName(m.name))}</span>${tag}</button></td>
           ${days.map(d => `<td>${cell(recOf(m.code, d), m, d)}</td>`).join('')}
           <td class="sum"><b style="color:var(--text)">${n}</b>/${days.length} <span class="mini-bar"><i style="width:${pct}%"></i></span></td>
         </tr>`;
@@ -1263,12 +1375,15 @@ function renderBudgetTable(ms, A){
     if (b > topVal){ topVal = b; topSpender = m; }
   });
 
+  const t = currentTeam();
+  const scopeLabel = t ? t.shortName : 'Toàn bộ các phòng';
+
   summaryBox.innerHTML = `
     <div class="budget-summary-grid">
       <div class="bs-item">
-        <div class="lbl"><span>💰</span> Tổng ngân sách tháng (PKD)</div>
+        <div class="lbl"><span>💰</span> Tổng ngân sách tháng (${scopeLabel})</div>
         <div class="val accent">${fmtVND(totalBudget)}</div>
-        <div class="sub">Toàn bộ nhân sự trong nhóm</div>
+        <div class="sub">Toàn bộ nhân sự trong nhóm đang xem</div>
       </div>
       <div class="bs-item">
         <div class="lbl"><span>👥</span> Nhân sự chạy QC</div>
@@ -1283,12 +1398,12 @@ function renderBudgetTable(ms, A){
       <div class="bs-item">
         <div class="lbl"><span>🏆</span> Ngân sách cao nhất</div>
         <div class="val" style="font-size:16px">${topSpender ? esc(shortName(topSpender.name)) : '—'}</div>
-        <div class="sub">${topSpender ? fmtVND(topVal) : 'Chưa có'}</div>
+        <div class="sub">${topSpender ? fmtVND(topVal) + (topSpender.teamShort ? ' · ' + topSpender.teamShort : '') : 'Chưa có'}</div>
       </div>
     </div>
   `;
 
-  $('#tableTitle').textContent = 'Bảng Ngân sách quảng cáo trong tháng (VNĐ)';
+  $('#tableTitle').textContent = `Bảng Ngân sách quảng cáo trong tháng (VNĐ) · ${scopeLabel}`;
   $('#tableSub').textContent = `${periodLabel()} · hiển thị mức ngân sách tích luỹ ghi nhận theo từng ngày & hiện tại`;
 
   // Sort rows
@@ -1323,8 +1438,9 @@ function renderBudgetTable(ms, A){
       ${rows.map(a => {
         const b = a.latestBudget;
         const pct = totalBudget ? Math.round(b / totalBudget * 1000) / 10 : 0;
+        const tag = S.scope === 'all' && a.m.teamShort ? `<span class="team-tag">${esc(a.m.teamShort)}</span>` : '';
         return `<tr data-person="${esc(a.m.code)}">
-          <td><div class="nmcell">${avatar(a.m)}<div>${esc(a.m.name)}<small>${esc(a.m.code)}</small></div></div></td>
+          <td><div class="nmcell">${avatar(a.m)}<div>${esc(a.m.name)}<small>${esc(a.m.code)}${tag}</small></div></div></td>
           <td class="bgt">${fmtVND(b)}</td>
           <td><div class="pct-bar"><span class="bar"><i style="width:${Math.min(100, pct)}%"></i></span><small>${pct}%</small></div></td>
           ${days.map(d => {
@@ -1349,7 +1465,9 @@ function renderSingleMetricTable(ms, A, mIdx){
   $('#budgetSummaryBox').hidden = true;
   const days = period();
   const metric = METRICS[mIdx];
-  $('#tableTitle').textContent = `Ma trận chỉ số: ${metric.h} (${GROUPS[metric.g].label})`;
+  const t = currentTeam();
+  const scopeLabel = t ? t.shortName : 'Toàn bộ';
+  $('#tableTitle').textContent = `Ma trận chỉ số: ${metric.h} (${GROUPS[metric.g].label}) · ${scopeLabel}`;
   $('#tableSub').textContent = `${periodLabel()} · số lượng thực hiện theo từng ngày và tổng cộng`;
 
   const rows = ms.map(m => {
@@ -1389,11 +1507,14 @@ function renderSingleMetricTable(ms, A, mIdx){
       </tr>
     </thead>
     <tbody>
-      ${rows.map(r => `<tr data-person="${esc(r.m.code)}">
-        <td><div class="nmcell">${avatar(r.m)}<div>${esc(r.m.name)}<small>${esc(r.m.code)}</small></div></div></td>
-        <td class="tot" style="color:var(--g-${metric.g})">${fmt(r.sum)}</td>
-        ${days.map(d => `<td class="${r.dayVals[d] ? '' : 'z'}">${r.dayVals[d] ? fmt(r.dayVals[d]) : '·'}</td>`).join('')}
-      </tr>`).join('')}
+      ${rows.map(r => {
+        const tag = S.scope === 'all' && r.m.teamShort ? `<span class="team-tag">${esc(r.m.teamShort)}</span>` : '';
+        return `<tr data-person="${esc(r.m.code)}">
+          <td><div class="nmcell">${avatar(r.m)}<div>${esc(r.m.name)}<small>${esc(r.m.code)}${tag}</small></div></div></td>
+          <td class="tot" style="color:var(--g-${metric.g})">${fmt(r.sum)}</td>
+          ${days.map(d => `<td class="${r.dayVals[d] ? '' : 'z'}">${r.dayVals[d] ? fmt(r.dayVals[d]) : '·'}</td>`).join('')}
+        </tr>`;
+      }).join('')}
     </tbody>
     <tfoot>
       <tr>
@@ -1462,7 +1583,9 @@ function renderStandardTable(ms, A){
   const ar = k => key === k ? `<span class="ar">${dir > 0 ? '▲' : '▼'}</span>` : '';
   const nd = period().length;
 
-  $('#tableTitle').textContent = filter === 'all' ? 'Bảng chi tiết thành viên' : `Bảng chi tiết: ${filter === 'online' ? 'Nội dung Online' : filter === 'care' ? 'Chăm sóc KH' : 'Thị trường'}`;
+  const t = currentTeam();
+  const scopeLabel = t ? t.shortName : 'Toàn bộ';
+  $('#tableTitle').textContent = filter === 'all' ? `Bảng chi tiết thành viên · ${scopeLabel}` : `Bảng chi tiết: ${filter === 'online' ? 'Nội dung Online' : filter === 'care' ? 'Chăm sóc KH' : 'Thị trường'} · ${scopeLabel}`;
   $('#tableSub').textContent = `${periodLabel()} · bấm tiêu đề cột để sắp xếp, bấm dòng để xem chi tiết`;
 
   let grpHeader = '';
@@ -1480,17 +1603,20 @@ function renderStandardTable(ms, A){
       </tr>
     </thead>
     <tbody>
-      ${rows.map(a => `<tr data-person="${esc(a.m.code)}">
-        <td><div class="nmcell">${avatar(a.m)}<div>${esc(a.m.name)}<small>${esc(a.m.code)}</small></div></div></td>
-        ${cols.map(c => {
-          const v = cellVal(a, c.key);
-          if (c.key === 'budget'){
-            return `<td class="${v ? 'bgt' : 'z'}">${v ? fmtVND(v, true) : '—'}</td>`;
-          }
-          const cls = [c.key === 'total' ? 'tot' : '', !v ? 'z' : '', v && v === maxBy[c.key] && c.key !== 'days' && rows.length > 1 ? 'top' : ''].join(' ');
-          return `<td class="${cls}">${c.key === 'days' ? `${v}<span class="muted">/${nd}</span>` : (v ? fmt(v) : '·')}</td>`;
-        }).join('')}
-      </tr>`).join('')}
+      ${rows.map(a => {
+        const tag = S.scope === 'all' && a.m.teamShort ? `<span class="team-tag">${esc(a.m.teamShort)}</span>` : '';
+        return `<tr data-person="${esc(a.m.code)}">
+          <td><div class="nmcell">${avatar(a.m)}<div>${esc(a.m.name)}<small>${esc(a.m.code)}${tag}</small></div></div></td>
+          ${cols.map(c => {
+            const v = cellVal(a, c.key);
+            if (c.key === 'budget'){
+              return `<td class="${v ? 'bgt' : 'z'}">${v ? fmtVND(v, true) : '—'}</td>`;
+            }
+            const cls = [c.key === 'total' ? 'tot' : '', !v ? 'z' : '', v && v === maxBy[c.key] && c.key !== 'days' && rows.length > 1 ? 'top' : ''].join(' ');
+            return `<td class="${cls}">${c.key === 'days' ? `${v}<span class="muted">/${nd}</span>` : (v ? fmt(v) : '·')}</td>`;
+          }).join('')}
+        </tr>`;
+      }).join('')}
     </tbody>
     <tfoot>
       <tr>
@@ -1513,16 +1639,16 @@ function exportCSV(){
   if (S.catFilter === 'budget'){
     const days = period();
     const A = agg(ms, days);
-    lines.push(['Mã TVBH', 'Họ tên', 'Ngân sách hiện tại (VNĐ)', ...days.map(d => `${DOW[dowOf(d)]} ${dm(d)}`)].map(q).join(','));
+    lines.push(['Mã TVBH', 'Họ tên', 'Phòng', 'Ngân sách hiện tại (VNĐ)', ...days.map(d => `${DOW[dowOf(d)]} ${dm(d)}`)].map(q).join(','));
     ms.forEach(m => {
       const a = A.by.get(m.code);
-      lines.push([m.code, m.name, a.latestBudget, ...days.map(d => a.dailyBudget[d] || 0)].map(q).join(','));
+      lines.push([m.code, m.name, m.teamShort || '', a.latestBudget, ...days.map(d => a.dailyBudget[d] || 0)].map(q).join(','));
     });
   } else if (S.catFilter.startsWith('m')){
     const mIdx = +S.catFilter.slice(1);
     const metric = METRICS[mIdx];
     const days = period();
-    lines.push(['Mã TVBH', 'Họ tên', `Tổng ${metric.h}`, ...days.map(d => `${DOW[dowOf(d)]} ${dm(d)}`)].map(q).join(','));
+    lines.push(['Mã TVBH', 'Họ tên', 'Phòng', `Tổng ${metric.h}`, ...days.map(d => `${DOW[dowOf(d)]} ${dm(d)}`)].map(q).join(','));
     ms.forEach(m => {
       let sum = 0;
       const dVals = days.map(d => {
@@ -1530,21 +1656,21 @@ function exportCSV(){
         sum += v;
         return v;
       });
-      lines.push([m.code, m.name, sum, ...dVals].map(q).join(','));
+      lines.push([m.code, m.name, m.teamShort || '', sum, ...dVals].map(q).join(','));
     });
   } else {
     const cols = tableCols(S.catFilter);
     const A = agg(ms, period());
-    lines.push(['Mã', 'Họ tên', ...cols.map(c => c.title || c.label)].map(q).join(','));
+    lines.push(['Mã', 'Họ tên', 'Phòng', ...cols.map(c => c.title || c.label)].map(q).join(','));
     ms.forEach(m => {
       const a = A.by.get(m.code);
-      lines.push([m.code, m.name, ...cols.map(c => cellVal(a, c.key))].map(q).join(','));
+      lines.push([m.code, m.name, m.teamShort || '', ...cols.map(c => cellVal(a, c.key))].map(q).join(','));
     });
   }
 
   const blob = new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `bao-cao_${S.catFilter}_${S.mode === 'day' ? S.date : S.from + '_' + S.to}.csv`; a.click();
+  a.download = `bao-cao_${S.scope}_${S.catFilter}_${S.mode === 'day' ? S.date : S.from + '_' + S.to}.csv`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
@@ -1560,28 +1686,31 @@ function renderPerson(){
   const ms = members();
   if (!ms.length){ $('#hero').innerHTML = '<div class="empty">Chưa có thành viên.</div>'; return; }
   if (!S.person || !ms.some(m => m.code === S.person)) S.person = ms[0].code;
-  const me = ms.find(m => m.code === S.person);
+  const me = ms.find(m => m.code === S.person) || D.all.find(m => m.code === S.person) || ms[0];
   const days = period(), endDay = days[days.length-1];
   const A = agg(ms, days), P = agg([me], prevPeriod());
-  const a = A.by.get(me.code), pa = P.by.get(me.code);
+  const a = A.by.get(me.code) || {vals: METRICS.map(()=>0), g:{online:0,care:0,field:0}, total:0, days:0, latestBudget:0};
+  const pa = P.by.get(me.code) || {total:0};
 
-  // picker
+  // picker: list members
   $('#picker').innerHTML = ms.map(m => {
-    const done = S.mode === 'day' ? !!recOf(m.code, S.date) : A.by.get(m.code).days > 0;
-    return `<button class="person" role="option" aria-pressed="${m.code === me.code}" aria-selected="${m.code === me.code}" data-pick="${esc(m.code)}" title="${esc(m.code + ' · ' + m.name)}">
-      ${avatar(m)}<span class="nm">${esc(shortName(m.name))}</span><span class="dot ${done ? '' : 'off'}" title="${done ? 'Đã báo cáo' : 'Chưa báo cáo'}"></span></button>`;
+    const done = S.mode === 'day' ? !!recOf(m.code, S.date) : (A.by.get(m.code)?.days > 0);
+    const tag = S.scope === 'all' && m.teamShort ? `<small class="team-tag">${esc(m.teamShort)}</small>` : '';
+    return `<button class="person" role="option" aria-pressed="${m.code === me.code}" aria-selected="${m.code === me.code}" data-pick="${esc(m.code)}" title="${esc(m.code + ' · ' + m.name + (m.teamShort ? ' (' + m.teamShort + ')' : ''))}">
+      ${avatar(m)}<span class="nm">${esc(shortName(m.name))}${tag}</span><span class="dot ${done ? '' : 'off'}" title="${done ? 'Đã báo cáo' : 'Chưa báo cáo'}"></span></button>`;
   }).join('');
   requestAnimationFrame(() => { const el = $('#picker [aria-pressed="true"]'); el && el.scrollIntoView({block:'nearest', inline:'nearest'}); });
 
   // hero
-  const ranked = ms.map(m => A.by.get(m.code)).sort((x, y) => y.total - x.total);
+  const ranked = ms.map(m => A.by.get(m.code) || {m, total:0}).sort((x, y) => y.total - x.total);
   const rank = ranked.findIndex(x => x.m.code === me.code) + 1;
   const allRecs = [...(D.byCode.get(me.code)?.values() || [])].sort((x, y) => x.ts - y.ts);
   const lastSub = allRecs.length ? allRecs.reduce((p, c) => c.ts > p.ts ? c : p) : null;
-  const curBgt = a.latestBudget;
+  const curBgt = a.latestBudget || memberCurrentBudget(me.code, endDay);
+  const teamLabel = me.teamName || (D.teamMap.get(me.code)?.name || '');
 
   $('#hero').innerHTML = `<div class="who">${avatar(me, 'lg')}<div style="min-width:0"><h2>${esc(me.name)}</h2>
-    <div class="code">${esc(me.code)}${me.inTeam ? ' · ' + esc(D.teamName || 'PKD 2') : ''} · ${periodLabel()}</div></div></div>
+    <div class="code">${esc(me.code)}${teamLabel ? ' · ' + esc(teamLabel) : ''} · ${periodLabel()}</div></div></div>
     <div class="hero-stats">
       <div class="hs"><div class="k">${S.mode === 'day' ? 'Trạng thái' : 'Ngày báo cáo'}</div><div class="v">${S.mode === 'day'
         ? (a.days ? '<span style="color:var(--ok)">Đã BC</span>' : '<span style="color:var(--miss)">Chưa BC</span>')
@@ -1606,7 +1735,7 @@ function renderPerson(){
     `<div class="card kpi">
       <div class="lbl"><i style="background:var(--g-budget)"></i>Ngân sách QC tháng</div>
       <div class="v" style="color:var(--g-budget)">${fmtVND(curBgt)}</div>
-      <div class="d"><span>${curBgt && A.tot.latestBudgetTotal ? Math.round(curBgt / A.tot.latestBudgetTotal * 100) + '% ngân sách cả nhóm' : 'Chưa có ngân sách'}</span></div>
+      <div class="d"><span>${curBgt && A.tot.latestBudgetTotal ? Math.round(curBgt / A.tot.latestBudgetTotal * 100) + '% ngân sách nhóm' : 'Chưa có ngân sách'}</span></div>
     </div>`
   ].join('');
 
@@ -1671,7 +1800,14 @@ function openPerson(code, day){
 
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; S.tab = b.dataset.tab; S.openDay = null; render(); });
 $('#modeSeg').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (!b) return; S.mode = b.dataset.mode; S.openDay = null; render(); });
-$('#scopeSeg').addEventListener('click', e => { const b = e.target.closest('[data-scope]'); if (!b) return; S.scope = b.dataset.scope; render(); });
+
+// Dynamic Team / Scope Switcher
+$('#scopeSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-scope]');
+  if (!b) return;
+  S.scope = b.dataset.scope;
+  render();
+});
 
 // Heatmap mode toggle
 $('#heatModeSeg').addEventListener('click', e => {
